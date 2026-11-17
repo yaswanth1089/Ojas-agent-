@@ -4,42 +4,117 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-
-    <groupId>org.example</groupId>
+    <groupId>org.ojas</groupId>
     <artifactId>ojas</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <name>Ojas — Local-First Enterprise AI Agent</name>
+    <description>
+        A modular, local-first, enterprise-grade AI Agent built from scratch in Java
+        using LangChain4j and Google Gemini. Not a wrapper — a true agentic system.
+    </description>
 
-    <!-- 2. System Level Properties (Targeting Java 25 LTS compilation) -->
+    <!-- Java 21 LTS for broad compatibility -->
     <properties>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <langchain4j.version>0.36.2</langchain4j.version>
     </properties>
 
-    <!-- 3. External Tool Container (Our Learning Modules) -->
     <dependencies>
-        <!-- LangChain4j main orchestration framework libraries -->
+        <!-- ═══════════════════════════════════════════════════════════════
+             CORE: LangChain4j Orchestration Framework
+             AiServices, ChatMemory, @Tool, RAG abstractions
+        ═══════════════════════════════════════════════════════════════ -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>0.36.2</version>
+            <version>${langchain4j.version}</version>
         </dependency>
 
-        <!-- Official Google AI Gemini interface connector plugin -->
+        <!-- ═══════════════════════════════════════════════════════════════
+             CONNECTOR: Google AI Gemini endpoint adapter
+             Sends prompts to gemini-2.5-flash / gemini-3.5-flash etc.
+        ═══════════════════════════════════════════════════════════════ -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-google-ai-gemini</artifactId>
-            <version>0.36.2</version>
+            <version>${langchain4j.version}</version>
         </dependency>
-        <!-- Lightweight logger engine to cleanly capture and print framework log streams -->
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             RAG: Local In-Process Embedding Model (AllMiniLmL6V2)
+             Runs entirely on the JVM — no external API calls for embeddings.
+             This is what makes Ojas a NON-WRAPPER: embeddings are computed locally.
+        ═══════════════════════════════════════════════════════════════ -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             LOGGING: SLF4J Simple — lightweight log renderer
+        ═══════════════════════════════════════════════════════════════ -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>2.0.12</version>
+            <version>2.0.16</version>
+        </dependency>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             JSON: Gson — conversation log parsing (ChatGPT exports etc.)
+        ═══════════════════════════════════════════════════════════════ -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.11.0</version>
         </dependency>
     </dependencies>
-    <!-- Lightweight logger engine to cleanly capture and print framework log streams -->
 
+    <build>
+        <plugins>
+            <!-- Compiler plugin: enable preview features for JDK 21+ -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>21</release>
+                </configuration>
+            </plugin>
 
-
+            <!-- Shade plugin: build fat JAR for standalone distribution -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>org.ojas.Main</mainClass>
+                                </transformer>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

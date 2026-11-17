@@ -11,6 +11,9 @@ target/
 .env
 .env.*
 
+### Maven Wrapper ###
+.mvn/
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws
