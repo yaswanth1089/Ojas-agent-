@@ -51,6 +51,11 @@ public class Main {
     private static OjasConfig config;
 
     public static void main(String[] args) {
+        // ── Ensure UTF-8 and IPv4 networking defaults ───────────────
+        System.setProperty("file.encoding", "UTF-8");
+        System.setProperty("sun.stdout.encoding", "UTF-8");
+        System.setProperty("sun.stderr.encoding", "UTF-8");
+        System.setProperty("java.net.preferIPv4Stack", "true");
 
         // ── 1. BOOT SPLASH ──────────────────────────────────────────
         OjasConsole.printSplash();
@@ -109,45 +114,121 @@ public class Main {
 
             if (input.isEmpty()) continue;
 
+            // ── Exit commands ───────────────────────────────────────
+            if (input.equalsIgnoreCase("exit") || input.equalsIgnoreCase("quit")) {
+                break;
+            }
+
             // ── Slash Commands ──────────────────────────────────────
             if (input.startsWith("/")) {
                 if (handleCommand(input, scanner)) continue;
                 else break; // /exit was called
             }
 
-            // ── Send to Agent ───────────────────────────────────────
+            // ── Send to Agent with Intelligent Resilience ──────────
             try {
-                String response = agent.chat(input);
+                String response = executeChatWithResilience(input);
                 OjasConsole.printResponse(response);
             } catch (Exception e) {
-                String msg = e.getMessage();
-                if (msg != null && (msg.contains("429") || msg.contains("rate"))) {
-                    OjasConsole.printError("Rate limit hit. Waiting 10 seconds...");
-                    sleep(10_000);
-                    OjasConsole.printInfo("Retrying...");
-                    try {
-                        String response = agent.chat(input);
-                        OjasConsole.printResponse(response);
-                    } catch (Exception e2) {
-                        OjasConsole.printError("Retry failed: " + e2.getMessage());
-                    }
-                } else if (msg != null && msg.contains("503")) {
-                    OjasConsole.printError("Gemini server overloaded (503). Retrying in 5s...");
-                    sleep(5_000);
-                    try {
-                        String response = agent.chat(input);
-                        OjasConsole.printResponse(response);
-                    } catch (Exception e2) {
-                        OjasConsole.printError("Retry failed: " + e2.getMessage());
-                    }
-                } else {
-                    OjasConsole.printError("Agent error: " + (msg != null ? msg : e.getClass().getSimpleName()));
-                }
+                OjasConsole.printError("Agent error: " + e.getMessage());
             }
         }
 
         scanner.close();
         OjasConsole.printShutdown();
+    }
+
+    /**
+     * Executes chat with automatic retry and model failover:
+     *  1. Catches transient socket / DNS handshake delays and retries.
+     *  2. Catches 503 high-demand spikes and auto-failovers to alternate model.
+     *  3. Catches 429 rate-limit errors and applies exponential backoff.
+     */
+    private static String executeChatWithResilience(String input) throws Exception {
+        try {
+            return agent.chat(input);
+        } catch (Exception e) {
+            String chain = getFullErrorChain(e);
+
+            // 1. Transient socket / DNS resolution hiccups on Windows startup
+            if (errorMatches(chain, "UnresolvedAddressException", "ConnectException", "SocketTimeoutException")) {
+                OjasConsole.printInfo("Network handshake initializing. Retrying...");
+                sleep(1500);
+                try {
+                    return agent.chat(input);
+                } catch (Exception retryEx) {
+                    chain = getFullErrorChain(retryEx);
+                }
+            }
+
+            // 2. High demand spikes (503 UNAVAILABLE)
+            if (errorMatches(chain, "503", "UNAVAILABLE", "high demand")) {
+                OjasConsole.printInfo("Model " + currentModelName + " reported high demand (503). Retrying in 2s...");
+                sleep(2000);
+                try {
+                    return agent.chat(input);
+                } catch (Exception retryEx) {
+                    // Auto-failover to alternative model
+                    String fallback = currentModelName.equalsIgnoreCase(OjasConfig.DEFAULT_MODEL_NAME)
+                            ? OjasConfig.FALLBACK_MODEL_NAME
+                            : OjasConfig.DEFAULT_MODEL_NAME;
+                    OjasConsole.printInfo("Auto-failover: temporarily switching to " + fallback + "...");
+                    if (switchModel(fallback)) {
+                        try {
+                            return agent.chat(input);
+                        } catch (Exception fallbackEx) {
+                            throw new RuntimeException("Failover to " + fallback + " also failed: " + getFullErrorChain(fallbackEx), fallbackEx);
+                        }
+                    }
+                    throw retryEx;
+                }
+            }
+
+            // 3. Rate limits (429 RESOURCE_EXHAUSTED)
+            if (errorMatches(chain, "429", "RESOURCE_EXHAUSTED", "rate limit")) {
+                OjasConsole.printInfo("Rate limit reached. Backing off for 6 seconds...");
+                sleep(6000);
+                return agent.chat(input);
+            }
+
+            throw new RuntimeException(chain.isEmpty() ? e.getClass().getSimpleName() : chain, e);
+        }
+    }
+
+    /**
+     * Switch active LLM model dynamically at runtime.
+     */
+    private static boolean switchModel(String modelName) {
+        try {
+            chatModel = buildChatModel(config.getApiKey(), modelName);
+            currentModelName = modelName;
+            agent = buildAgent();
+            return true;
+        } catch (Exception e) {
+            OjasConsole.printError("Failed to switch model: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static String getFullErrorChain(Throwable t) {
+        StringBuilder sb = new StringBuilder();
+        Throwable cur = t;
+        while (cur != null) {
+            if (cur.getMessage() != null && !cur.getMessage().isBlank()) {
+                if (!sb.isEmpty()) sb.append(" -> ");
+                sb.append(cur.getMessage());
+            }
+            cur = cur.getCause();
+        }
+        return sb.toString();
+    }
+
+    private static boolean errorMatches(String chain, String... keywords) {
+        String lower = chain.toLowerCase();
+        for (String kw : keywords) {
+            if (lower.contains(kw.toLowerCase())) return true;
+        }
+        return false;
     }
 
     /**
@@ -202,21 +283,20 @@ public class Main {
                     }
                 }
             }
-            case "/model" -> {
+            case "/model", "/models" -> {
                 if (arg.isEmpty()) {
                     OjasConsole.printInfo("Current model: " + currentModelName);
-                    OjasConsole.printInfo("Usage: /model <model-name>  (e.g., gemini-2.5-flash)");
+                    OjasConsole.printInfo("Verified models: gemini-3.8-flash (default), gemini-3.5-flash (fast), gemini-3.5-flash-lite");
+                    OjasConsole.printInfo("Usage: /model <model-name>");
                 } else {
                     OjasConsole.printInfo("Switching to model: " + arg);
-                    try {
-                        chatModel = buildChatModel(config.getApiKey(), arg);
-                        currentModelName = arg;
-                        agent = buildAgent();
+                    if (switchModel(arg)) {
                         OjasConsole.printSuccess("Now using model: " + arg);
-                    } catch (Exception e) {
-                        OjasConsole.printError("Failed to switch model: " + e.getMessage());
                     }
                 }
+            }
+            case "/status" -> {
+                OjasConsole.printBootStatus(currentModelName, config.getMemoryWindow());
             }
             default -> {
                 OjasConsole.printError("Unknown command: " + cmd + " — type /help for options.");

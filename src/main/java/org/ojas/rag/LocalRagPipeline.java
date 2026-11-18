@@ -86,6 +86,7 @@ public class LocalRagPipeline {
 
         try (Stream<Path> walk = Files.walk(root, 15)) {
             walk.filter(Files::isRegularFile)
+                .filter(this::isNotInIgnoredDir)
                 .filter(this::isSupportedFile)
                 .filter(this::isNotTooLarge)
                 .forEach(file -> {
@@ -139,6 +140,17 @@ public class LocalRagPipeline {
             System.err.println("  ⚠ Failed to ingest: " + filePath + " — " + e.getMessage());
             return false;
         }
+    }
+
+    private boolean isNotInIgnoredDir(Path path) {
+        for (Path part : path) {
+            String p = part.toString().toLowerCase();
+            if (p.equals(".git") || p.equals("target") || p.equals(".idea") ||
+                p.equals("node_modules") || p.equals(".gradle") || p.equals("bin")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean isSupportedFile(Path file) {

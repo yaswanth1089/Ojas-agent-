@@ -79,7 +79,9 @@ public class FileSystemTools {
     public String writeFile(String filePath, String content) {
         try {
             Path path = Path.of(filePath);
-            Files.createDirectories(path.getParent());
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
+            }
             Files.writeString(path, content, StandardCharsets.UTF_8);
             return "SUCCESS: File written — " + filePath + " (" + content.length() + " chars)";
         } catch (IOException e) {
@@ -91,7 +93,9 @@ public class FileSystemTools {
     public String appendToFile(String filePath, String content) {
         try {
             Path path = Path.of(filePath);
-            Files.createDirectories(path.getParent());
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
+            }
             Files.writeString(path, content, StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             return "SUCCESS: Content appended to — " + filePath;
@@ -179,7 +183,12 @@ public class FileSystemTools {
                 }
             }
 
-            int exitCode = proc.waitFor();
+            boolean finished = proc.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
+            if (!finished) {
+                proc.destroyForcibly();
+                return "TIMEOUT: Command timed out after 30 seconds — " + command + "\nPartial output:\n" + output;
+            }
+            int exitCode = proc.exitValue();
             return "Exit Code: " + exitCode + "\n" + output;
         } catch (IOException | InterruptedException e) {
             return "ERROR executing command: " + e.getMessage();

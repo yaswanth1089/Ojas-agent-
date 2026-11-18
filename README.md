@@ -17,7 +17,7 @@
 
 [![Java](https://img.shields.io/badge/Java-21+-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![LangChain4j](https://img.shields.io/badge/LangChain4j-0.36.2-blue?style=flat-square)](https://docs.langchain4j.dev/)
-[![Gemini](https://img.shields.io/badge/Google_Gemini-2.5_Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Gemini](https://img.shields.io/badge/Google_Gemini-3.8_Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 </div>
@@ -74,7 +74,7 @@ Ojas is a **modular, local-first, enterprise-grade AI Agent** built from scratch
                                     |
                                     v
 +-----------------------------------------------------------------------+
-|                GOOGLE GEMINI API GATEWAY (gemini-2.5-flash)           |
+|                GOOGLE GEMINI API GATEWAY (gemini-3.8-flash)           |
 |           BYOK — Zero recurring cloud server costs                    |
 +-----------------------------------------------------------------------+
 ```
@@ -159,16 +159,32 @@ Edit Run Configuration → Environment Variables → Add `GEMINI_API_KEY=your_ke
 
 ### 3. Build & Run
 
-```bash
-mvn clean compile exec:java -Dexec.mainClass="org.ojas.Main"
+#### Quick Launch (Windows)
+Double-click or run from PowerShell:
+```powershell
+.\run.ps1
+```
+Or from Command Prompt:
+```cmd
+run.bat
 ```
 
-Or build a standalone fat JAR:
+#### Run in IntelliJ IDEA
+1. Open the project in IntelliJ IDEA.
+2. Edit Run Configuration:
+   - **Main class**: `org.ojas.Main` (or `org.example.Main`)
+   - **VM options**: `--enable-native-access=ALL-UNNAMED -Djava.net.preferIPv4Stack=true`
+   - **Environment variables**: `GEMINI_API_KEY=your_api_key_here`
+3. Click **Run** (`Shift + F10`).
 
+#### Run with Maven / Standalone JAR
 ```bash
-mvn clean package
-java -jar target/ojas-1.0-SNAPSHOT.jar
+mvn clean package -DskipTests
+java --enable-native-access=ALL-UNNAMED -Djava.net.preferIPv4Stack=true -jar target/ojas-1.0-SNAPSHOT.jar
 ```
+
+> **Note on Java 22+ / 27 Native Access:**
+> Java 22+ restricts native code loading (`System.load`) in unnamed modules. Since the local embedding model (`AllMiniLmL6V2` via ONNX Runtime) runs in-process on the JVM, passing `--enable-native-access=ALL-UNNAMED` prevents restricted method warnings and ensures forward compatibility.
 
 ---
 
@@ -188,7 +204,8 @@ Once Ojas is running, you'll see the boot splash and system status. Then interac
 |:---|:---|
 | `/rag <directory>` | Index a local directory for RAG-powered code search |
 | `/ingest <file>` | Import a ChatGPT JSON export or text transcript into memory |
-| `/model <name>` | Switch Gemini model (e.g., `gemini-2.5-flash`, `gemini-3.5-flash`) |
+| `/model <name>` | Switch model (e.g., `gemini-3.8-flash`, `gemini-3.5-flash`) |
+| `/status` | View system status, active model, and memory state |
 | `/clear` | Clear conversation memory and start fresh |
 | `/help` | Show available commands |
 | `/exit` | Quit Ojas |

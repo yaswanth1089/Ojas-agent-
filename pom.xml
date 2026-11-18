@@ -115,6 +115,16 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Exec plugin: run directly via 'mvn exec:java' -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <mainClass>org.ojas.Main</mainClass>
+                    <commandlineArgs>--enable-native-access=ALL-UNNAMED -Djava.net.preferIPv4Stack=true</commandlineArgs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

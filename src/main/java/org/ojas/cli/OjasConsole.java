@@ -150,7 +150,8 @@ public class OjasConsole {
         System.out.println();
         System.out.println(WHITE + "  /rag <dir>    " + DIM + "Index a local directory for RAG search" + RESET);
         System.out.println(WHITE + "  /ingest <file>" + DIM + "Import a ChatGPT JSON export or transcript" + RESET);
-        System.out.println(WHITE + "  /model <name> " + DIM + "Switch Gemini model (e.g., gemini-2.5-flash)" + RESET);
+        System.out.println(WHITE + "  /model <name> " + DIM + "Switch model (e.g., gemini-3.8-flash, gemini-3.5-flash)" + RESET);
+        System.out.println(WHITE + "  /status       " + DIM + "Show system status and active configuration" + RESET);
         System.out.println(WHITE + "  /clear        " + DIM + "Clear conversation memory" + RESET);
         System.out.println(WHITE + "  /help         " + DIM + "Show this help menu" + RESET);
         System.out.println(WHITE + "  /exit         " + DIM + "Quit Ojas" + RESET);

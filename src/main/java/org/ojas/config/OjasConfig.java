@@ -10,7 +10,8 @@ package org.ojas.config;
 public final class OjasConfig {
 
     // ── Model Defaults ──────────────────────────────────────────────────
-    public static final String DEFAULT_MODEL_NAME = "gemini-2.5-flash";
+    public static final String DEFAULT_MODEL_NAME = "gemini-3.8-flash";
+    public static final String FALLBACK_MODEL_NAME = "gemini-3.5-flash";
     public static final int    DEFAULT_MEMORY_WINDOW = 20;
     public static final int    DEFAULT_RAG_TOP_K = 5;
     public static final int    DEFAULT_RAG_CHUNK_SIZE = 500;
@@ -77,5 +78,6 @@ public final class OjasConfig {
 
     public String getApiKey()      { return apiKey; }
     public String getModelName()   { return modelName; }
+    public String getFallbackModelName() { return FALLBACK_MODEL_NAME; }
     public int    getMemoryWindow(){ return memoryWindow; }
 }
